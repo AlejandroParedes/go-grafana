@@ -6,6 +6,7 @@ import (
 
 	"go-grafana/internal/domain/models"
 	"go-grafana/internal/domain/repository"
+	"go-grafana/pkg/metrics"
 )
 
 // UserService defines the interface for user business operations
@@ -21,12 +22,14 @@ type UserService interface {
 // userService implements UserService interface
 type userService struct {
 	userRepo repository.UserRepository
+	metrics  *metrics.PrometheusMetrics
 }
 
 // NewUserService creates a new instance of UserService
-func NewUserService(userRepo repository.UserRepository) UserService {
+func NewUserService(userRepo repository.UserRepository, prometheusMetrics *metrics.PrometheusMetrics) UserService {
 	return &userService{
 		userRepo: userRepo,
+		metrics:  prometheusMetrics,
 	}
 }
 
@@ -50,6 +53,15 @@ func (s *userService) CreateUser(req *models.CreateUserRequest) (*models.UserRes
 	// Save to database
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Record metrics
+	s.metrics.RecordUserCreation()
+	s.metrics.RecordUserAge(user.Age)
+
+	// Update active users count
+	if count, err := s.userRepo.Count(); err == nil {
+		s.metrics.SetActiveUsers(count)
 	}
 
 	return user.ToResponse(), nil
@@ -114,6 +126,10 @@ func (s *userService) UpdateUser(id uint, req *models.UpdateUserRequest) (*model
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
+	// Record metrics
+	s.metrics.RecordUserUpdate()
+	s.metrics.RecordUserAge(user.Age)
+
 	return user.ToResponse(), nil
 }
 
@@ -132,6 +148,14 @@ func (s *userService) DeleteUser(id uint) error {
 	// Delete user
 	if err := s.userRepo.Delete(id); err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	// Record metrics
+	s.metrics.RecordUserDeletion()
+
+	// Update active users count
+	if count, err := s.userRepo.Count(); err == nil {
+		s.metrics.SetActiveUsers(count)
 	}
 
 	return nil
