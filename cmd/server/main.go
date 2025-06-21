@@ -82,11 +82,29 @@ func main() {
 }
 
 // newLogger creates a new Zap logger
-func newLogger() *zap.Logger {
-	logger, err := zap.NewDevelopment()
+func newLogger(cfg *config.Config) *zap.Logger {
+	var logger *zap.Logger
+	var err error
+
+	switch cfg.Logging.Level {
+	case "debug":
+		logger, err = zap.NewDevelopment()
+	case "info":
+		logger, err = zap.NewProduction()
+	case "warn":
+		logger, err = zap.NewProduction()
+		logger = logger.WithOptions(zap.IncreaseLevel(zap.WarnLevel))
+	case "error":
+		logger, err = zap.NewProduction()
+		logger = logger.WithOptions(zap.IncreaseLevel(zap.ErrorLevel))
+	default:
+		logger, err = zap.NewProduction()
+	}
+
 	if err != nil {
 		log.Fatal("Failed to create logger:", err)
 	}
+
 	return logger
 }
 
