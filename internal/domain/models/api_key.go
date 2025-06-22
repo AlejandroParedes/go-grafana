@@ -1,9 +1,9 @@
 package models
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"time"
+
+	"go-grafana/internal/util"
 
 	"gorm.io/gorm"
 )
@@ -45,7 +45,7 @@ type UpdateAPIKeyRequest struct {
 type APIKeyResponse struct {
 	ID          uint       `json:"id" example:"1"`
 	Name        string     `json:"name" example:"My API Key"`
-	Key         string     `json:"key" example:"sk-1234567890abcdef"`
+	Key         string     `json:"key,omitempty" example:"sk-1234567890abcdef"`
 	Description string     `json:"description" example:"API key for external service"`
 	Active      bool       `json:"active" example:"true"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty" example:"2024-12-31T23:59:59Z"`
@@ -53,12 +53,13 @@ type APIKeyResponse struct {
 	UpdatedAt   time.Time  `json:"updated_at" example:"2023-01-01T00:00:00Z"`
 }
 
-// ToResponse converts an APIKey model to APIKeyResponse
-func (ak *APIKey) ToResponse() *APIKeyResponse {
+// ToResponseWithKey converts an APIKey model to APIKeyResponse, including the plaintext key.
+// This should only be used when creating a new key.
+func (ak *APIKey) ToResponseWithKey(plainTextKey string) *APIKeyResponse {
 	return &APIKeyResponse{
 		ID:          ak.ID,
 		Name:        ak.Name,
-		Key:         ak.Key,
+		Key:         plainTextKey,
 		Description: ak.Description,
 		Active:      ak.Active,
 		ExpiresAt:   ak.ExpiresAt,
@@ -81,13 +82,20 @@ func (ak *APIKey) ToResponseWithoutKey() *APIKeyResponse {
 	}
 }
 
-// FromCreateRequest populates an APIKey from CreateAPIKeyRequest
-func (ak *APIKey) FromCreateRequest(req *CreateAPIKeyRequest) {
+// FromCreateRequest populates an APIKey from CreateAPIKeyRequest and generates a new key
+func (ak *APIKey) FromCreateRequest(req *CreateAPIKeyRequest) (string, error) {
 	ak.Name = req.Name
 	ak.Description = req.Description
 	ak.ExpiresAt = req.ExpiresAt
 	ak.Active = true // Default to active when creating
-	ak.Key = GenerateAPIKey()
+
+	plainTextKey, err := util.GenerateAPIKey()
+	if err != nil {
+		return "", err
+	}
+	ak.Key = util.HashAPIKey(plainTextKey)
+
+	return plainTextKey, nil
 }
 
 // FromUpdateRequest populates an APIKey from UpdateAPIKeyRequest
@@ -109,11 +117,4 @@ func (ak *APIKey) IsExpired() bool {
 // IsValid returns true if the API key is active and not expired
 func (ak *APIKey) IsValid() bool {
 	return ak.Active && !ak.IsExpired()
-}
-
-// GenerateAPIKey generates a new API key
-func GenerateAPIKey() string {
-	bytes := make([]byte, 32)
-	rand.Read(bytes)
-	return "sk-" + hex.EncodeToString(bytes)
 }

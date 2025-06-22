@@ -32,8 +32,10 @@ func NewAPIKeyHandler(apiKeyService service.APIKeyService, logger *zap.Logger) *
 // @Accept json
 // @Produce json
 // @Param api_key body models.CreateAPIKeyRequest true "API key information"
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Success 201 {object} models.APIKeyResponse
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api-keys [post]
@@ -152,8 +154,10 @@ func (h *APIKeyHandler) GetAPIKeyByID(c *gin.Context) {
 // @Produce json
 // @Param id path int true "API Key ID"
 // @Param api_key body models.UpdateAPIKeyRequest true "Updated API key information"
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Success 200 {object} models.APIKeyResponse
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api-keys/{id} [put]
@@ -211,8 +215,10 @@ func (h *APIKeyHandler) UpdateAPIKey(c *gin.Context) {
 // @Tags api-keys
 // @Produce json
 // @Param id path int true "API Key ID"
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api-keys/{id} [delete]

@@ -5,6 +5,7 @@ import (
 
 	"go-grafana/internal/domain/models"
 	"go-grafana/internal/domain/repository"
+	"go-grafana/internal/util"
 )
 
 // APIKeyService defines the interface for API key business operations
@@ -36,14 +37,17 @@ func (s *apiKeyService) CreateAPIKey(req *models.CreateAPIKeyRequest) (*models.A
 	}
 
 	apiKey := &models.APIKey{}
-	apiKey.FromCreateRequest(req)
-
-	err := s.apiKeyRepo.Create(apiKey)
+	plainTextKey, err := apiKey.FromCreateRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
-	return apiKey.ToResponse(), nil
+	err = s.apiKeyRepo.Create(apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiKey.ToResponseWithKey(plainTextKey), nil
 }
 
 // GetAPIKeyByID retrieves an API key by its ID
@@ -117,7 +121,9 @@ func (s *apiKeyService) ValidateAPIKey(key string) (*models.APIKey, error) {
 		return nil, errors.New("API key is required")
 	}
 
-	apiKey, err := s.apiKeyRepo.GetByKey(key)
+	hashedKey := util.HashAPIKey(key)
+
+	apiKey, err := s.apiKeyRepo.GetByKey(hashedKey)
 	if err != nil {
 		return nil, errors.New("invalid API key")
 	}
