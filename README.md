@@ -72,6 +72,25 @@ A modern Go web application with comprehensive monitoring using Grafana, Prometh
    # Using Docker
    docker run --name postgres -e POSTGRES_DB=go_grafana -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:15-alpine
    ```
+   ```sql
+   INSERT INTO api_keys (
+      name,
+      key,
+      description,
+      active,
+      expires_at,
+      created_at,
+      updated_at
+   ) VALUES (
+      'My API Key',
+      'sk-123abctest',
+      'API key for external service',
+      true,
+      '2024-12-31T23:59:59Z',
+      NOW(),
+      NOW()
+   );
+   ```
 
 3. **Set environment variables**
    ```bash
