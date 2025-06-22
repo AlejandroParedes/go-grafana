@@ -18,3 +18,19 @@ App to create a basic go web server, connect with grafana to monitoring the app,
 ## Application docuemnts
 - write a readme
 - write a markdown with the name app-plan.md with the plant that you AI Agent will apply
+
+# Updates 21 Jun 2025
+Update the app to implement control on the endpoints
+
+## New features
+- Control on create, delete and update user by api key
+- Let open for list all users and get by id
+- Create CRUD to create the api key
+- Manage the api key control by middleware
+
+## AI considerations
+- Implement the api key control on the endpoints
+- Update swagger docs to include X-API-Key HEADER
+- Make swagger UI let users put on demo the X-API-Key HEADER
+- Update readme
+- Update app-plan

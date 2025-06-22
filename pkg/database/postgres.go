@@ -59,6 +59,10 @@ func autoMigrate(db *gorm.DB, logger *zap.Logger) error {
 		return fmt.Errorf("failed to migrate User model: %w", err)
 	}
 
+	if err := db.AutoMigrate(&models.APIKey{}); err != nil {
+		return fmt.Errorf("failed to migrate APIKey model: %w", err)
+	}
+
 	logger.Info("Database migration completed successfully")
 	return nil
 }

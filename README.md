@@ -5,13 +5,15 @@ A modern Go web application with comprehensive monitoring using Grafana, Prometh
 ## 🚀 Features
 
 - **RESTful API**: Complete CRUD operations for user management
+- **API Key Authentication**: Secure API key-based authentication for protected endpoints
+- **API Key Management**: Full CRUD operations for managing API keys
 - **Clean Architecture**: Domain-driven design with clear separation of concerns
 - **Dependency Injection**: Using Uber FX for clean dependency management
 - **Monitoring**: Prometheus metrics collection and Grafana dashboards
 - **Database**: PostgreSQL with GORM ORM
 - **Containerization**: Docker and Kubernetes deployment ready
-- **Documentation**: Swagger/OpenAPI documentation
-- **Security**: CORS, input validation, and secure headers
+- **Documentation**: Swagger/OpenAPI documentation with API key support
+- **Security**: CORS, input validation, secure headers, and API key validation
 - **Logging**: Structured logging with Zap
 
 ## 🏗️ Architecture
@@ -95,15 +97,33 @@ A modern Go web application with comprehensive monitoring using Grafana, Prometh
 http://localhost:8080/api/v1
 ```
 
+### Authentication
+
+The API uses API key authentication for protected endpoints. Include your API key in the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: sk-your-api-key-here" http://localhost:8080/api/v1/users
+```
+
 ### User Management
 
-| Method | Endpoint | Description | Request Body |
-|--------|----------|-------------|--------------|
-| `POST` | `/users` | Create a new user | `CreateUserRequest` |
-| `GET` | `/users` | Get all users | - |
-| `GET` | `/users/{id}` | Get user by ID | - |
-| `PUT` | `/users/{id}` | Update user | `UpdateUserRequest` |
-| `DELETE` | `/users/{id}` | Delete user | - |
+| Method | Endpoint | Description | Authentication | Request Body |
+|--------|----------|-------------|----------------|--------------|
+| `POST` | `/users` | Create a new user | **Required** | `CreateUserRequest` |
+| `GET` | `/users` | Get all users | Not required | - |
+| `GET` | `/users/{id}` | Get user by ID | Not required | - |
+| `PUT` | `/users/{id}` | Update user | **Required** | `UpdateUserRequest` |
+| `DELETE` | `/users/{id}` | Delete user | **Required** | - |
+
+### API Key Management
+
+| Method | Endpoint | Description | Authentication | Request Body |
+|--------|----------|-------------|----------------|--------------|
+| `POST` | `/api-keys` | Create a new API key | **Required** | `CreateAPIKeyRequest` |
+| `GET` | `/api-keys` | Get all API keys | **Required** | - |
+| `GET` | `/api-keys/{id}` | Get API key by ID | **Required** | - |
+| `PUT` | `/api-keys/{id}` | Update API key | **Required** | `UpdateAPIKeyRequest` |
+| `DELETE` | `/api-keys/{id}` | Delete API key | **Required** | - |
 
 ### System Endpoints
 
@@ -169,10 +189,27 @@ go test -v ./...
 
 ### API Testing Examples
 
-#### Create User
+#### Create API Key
+```bash
+curl -X POST http://localhost:8080/api/v1/api-keys \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-your-existing-api-key" \
+  -d '{
+    "name": "My New API Key",
+    "description": "API key for external service"
+  }'
+```
+
+#### Get All API Keys
+```bash
+curl -H "X-API-Key: sk-your-api-key" http://localhost:8080/api/v1/api-keys
+```
+
+#### Create User (with API key)
 ```bash
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-your-api-key" \
   -d '{
     "email": "john.doe@example.com",
     "first_name": "John",
@@ -181,20 +218,21 @@ curl -X POST http://localhost:8080/api/v1/users \
   }'
 ```
 
-#### Get All Users
+#### Get All Users (no API key required)
 ```bash
 curl http://localhost:8080/api/v1/users
 ```
 
-#### Get User by ID
+#### Get User by ID (no API key required)
 ```bash
 curl http://localhost:8080/api/v1/users/1
 ```
 
-#### Update User
+#### Update User (with API key)
 ```bash
 curl -X PUT http://localhost:8080/api/v1/users/1 \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-your-api-key" \
   -d '{
     "email": "john.doe.updated@example.com",
     "first_name": "John",
@@ -204,9 +242,76 @@ curl -X PUT http://localhost:8080/api/v1/users/1 \
   }'
 ```
 
-#### Delete User
+#### Delete User (with API key)
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/users/1
+curl -X DELETE http://localhost:8080/api/v1/users/1 \
+  -H "X-API-Key: sk-your-api-key"
+```
+
+## 🔐 API Key Management
+
+### Creating Your First API Key
+
+Since all API key management endpoints require authentication, you'll need to create the first API key directly in the database or use a default key for initial setup.
+
+#### Option 1: Database Insert
+```sql
+INSERT INTO api_keys (name, key, description, active, created_at, updated_at) 
+VALUES ('Default API Key', 'sk-default-key-for-development', 'Default API key for development', true, NOW(), NOW());
+```
+
+#### Option 2: Environment Variable (for development)
+You can modify the application to create a default API key on startup for development environments.
+
+### API Key Security
+
+- API keys are stored securely in the database
+- Keys are hashed and validated on each request
+- Expired or inactive keys are automatically rejected
+- API keys can be set to expire at a specific date/time
+- Keys are masked in API responses for security
+
+### API Key Format
+
+API keys follow the format: `sk-` followed by a 64-character hexadecimal string.
+
+Example: `sk-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`
+
+### API Key Management Examples
+
+#### Create a New API Key
+```bash
+curl -X POST http://localhost:8080/api/v1/api-keys \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-your-existing-api-key" \
+  -d '{
+    "name": "Production API Key",
+    "description": "API key for production environment",
+    "expires_at": "2024-12-31T23:59:59Z"
+  }'
+```
+
+#### List All API Keys
+```bash
+curl -H "X-API-Key: sk-your-api-key" http://localhost:8080/api/v1/api-keys
+```
+
+#### Update an API Key
+```bash
+curl -X PUT http://localhost:8080/api/v1/api-keys/1 \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-your-api-key" \
+  -d '{
+    "name": "Updated API Key Name",
+    "description": "Updated description",
+    "active": true
+  }'
+```
+
+#### Delete an API Key
+```bash
+curl -X DELETE http://localhost:8080/api/v1/api-keys/1 \
+  -H "X-API-Key: sk-your-api-key"
 ```
 
 ## 🐳 Docker
@@ -276,17 +381,22 @@ go-grafana/
 │   │   └── config.go              # Configuration management
 │   ├── domain/
 │   │   ├── models/
-│   │   │   └── user.go            # Domain models
+│   │   │   ├── user.go            # Domain models
+│   │   │   └── api_key.go         # API key models
 │   │   └── repository/
-│   │       └── user_repository.go # Data access layer
+│   │       ├── user_repository.go # Data access layer
+│   │       └── api_key_repository.go # API key data access
 │   ├── service/
-│   │   └── user_service.go        # Business logic
+│   │   ├── user_service.go        # Business logic
+│   │   └── api_key_service.go     # API key business logic
 │   ├── handler/
-│   │   └── user_handler.go        # HTTP handlers
+│   │   ├── user_handler.go        # HTTP handlers
+│   │   └── api_key_handler.go     # API key HTTP handlers
 │   └── middleware/
 │       ├── logging.go             # Logging middleware
 │       ├── metrics.go             # Metrics middleware
-│       └── cors.go                # CORS middleware
+│       ├── cors.go                # CORS middleware
+│       └── api_key_auth.go        # API key authentication
 ├── pkg/
 │   ├── database/
 │   │   └── postgres.go            # Database connection
@@ -332,6 +442,7 @@ If you encounter any issues or have questions:
 
 ## 🔄 Version History
 
+- **v1.1.0**: Added API key authentication and management system
 - **v1.0.0**: Initial release with basic CRUD operations and monitoring
 - Future versions will include additional features and improvements
 

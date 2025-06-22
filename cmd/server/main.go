@@ -43,7 +43,7 @@ import (
 
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
-// @name Authorization
+// @name X-API-Key
 func main() {
 	// Initialize Swagger info
 	docs.SwaggerInfo.Title = "Go Grafana Web API"
@@ -61,11 +61,14 @@ func main() {
 			database.NewPostgresDB,
 			metrics.NewPrometheusMetrics,
 			repository.NewUserRepository,
+			repository.NewAPIKeyRepository,
 			service.NewUserService,
+			service.NewAPIKeyService,
 			middleware.NewLoggingMiddleware,
 			middleware.NewMetricsMiddleware,
 			middleware.NewCORSMiddleware,
 			handler.NewUserHandler,
+			handler.NewAPIKeyHandler,
 			newGinEngine,
 			newHTTPServer,
 		),
@@ -114,6 +117,9 @@ func newGinEngine(
 	metricsMiddleware middleware.MetricsMiddleware,
 	corsMiddleware middleware.CORSMiddleware,
 	userHandler *handler.UserHandler,
+	apiKeyHandler *handler.APIKeyHandler,
+	apiKeyService service.APIKeyService,
+	logger *zap.Logger,
 ) *gin.Engine {
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
@@ -126,6 +132,9 @@ func newGinEngine(
 	engine.Use(metricsMiddleware.Handle())
 	engine.Use(corsMiddleware.Handle())
 	engine.Use(gin.Recovery())
+
+	// Create API key authentication middleware
+	apiKeyAuthMiddleware := middleware.APIKeyAuthMiddleware(apiKeyService, logger)
 
 	// API routes
 	api := engine.Group("/api/v1")
@@ -145,11 +154,24 @@ func newGinEngine(
 		// User routes
 		users := api.Group("/users")
 		{
-			users.POST("/", userHandler.CreateUser)
+			// Public endpoints (no API key required)
 			users.GET("/", userHandler.GetUsers)
 			users.GET("/:id", userHandler.GetUserByID)
-			users.PUT("/:id", userHandler.UpdateUser)
-			users.DELETE("/:id", userHandler.DeleteUser)
+
+			// Protected endpoints (API key required)
+			users.POST("/", apiKeyAuthMiddleware, userHandler.CreateUser)
+			users.PUT("/:id", apiKeyAuthMiddleware, userHandler.UpdateUser)
+			users.DELETE("/:id", apiKeyAuthMiddleware, userHandler.DeleteUser)
+		}
+
+		// API Key management routes (protected by API key)
+		apiKeys := api.Group("/api-keys")
+		{
+			apiKeys.POST("/", apiKeyAuthMiddleware, apiKeyHandler.CreateAPIKey)
+			apiKeys.GET("/", apiKeyAuthMiddleware, apiKeyHandler.GetAPIKeys)
+			apiKeys.GET("/:id", apiKeyAuthMiddleware, apiKeyHandler.GetAPIKeyByID)
+			apiKeys.PUT("/:id", apiKeyAuthMiddleware, apiKeyHandler.UpdateAPIKey)
+			apiKeys.DELETE("/:id", apiKeyAuthMiddleware, apiKeyHandler.DeleteAPIKey)
 		}
 	}
 

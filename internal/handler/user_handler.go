@@ -31,9 +31,11 @@ func NewUserHandler(userService service.UserService, logger *zap.Logger) *UserHa
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Param user body models.CreateUserRequest true "User information"
 // @Success 201 {object} models.UserResponse
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /users [post]
@@ -147,10 +149,12 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Param id path int true "User ID"
 // @Param user body models.UpdateUserRequest true "Updated user information"
 // @Success 200 {object} models.UserResponse
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -211,9 +215,11 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 // @Description Delete a user by their ID
 // @Tags users
 // @Produce json
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Param id path int true "User ID"
 // @Success 204 "No Content"
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /users/{id} [delete]
