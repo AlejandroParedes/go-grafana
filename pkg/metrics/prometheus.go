@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -18,33 +17,40 @@ type PrometheusMetrics struct {
 }
 
 // NewPrometheusMetrics creates a new Prometheus metrics instance
-func NewPrometheusMetrics(logger *zap.Logger) *PrometheusMetrics {
+func NewPrometheusMetrics(logger *zap.Logger, reg prometheus.Registerer) *PrometheusMetrics {
 	// Define business metrics
-	userCreationTotal := promauto.NewCounter(prometheus.CounterOpts{
+	userCreationTotal := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "user_creation_total",
 		Help: "Total number of users created",
 	})
 
-	userDeletionTotal := promauto.NewCounter(prometheus.CounterOpts{
+	userDeletionTotal := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "user_deletion_total",
 		Help: "Total number of users deleted",
 	})
 
-	userUpdateTotal := promauto.NewCounter(prometheus.CounterOpts{
+	userUpdateTotal := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "user_update_total",
 		Help: "Total number of user updates",
 	})
 
-	activeUsersGauge := promauto.NewGauge(prometheus.GaugeOpts{
+	activeUsersGauge := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "active_users_total",
 		Help: "Total number of active users",
 	})
 
-	userAgeHistogram := promauto.NewHistogram(prometheus.HistogramOpts{
+	userAgeHistogram := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "user_age_distribution",
 		Help:    "Distribution of user ages",
 		Buckets: prometheus.LinearBuckets(0, 10, 13), // 0-120 years in 10-year buckets
 	})
+
+	// Register the metrics
+	reg.MustRegister(userCreationTotal)
+	reg.MustRegister(userDeletionTotal)
+	reg.MustRegister(userUpdateTotal)
+	reg.MustRegister(activeUsersGauge)
+	reg.MustRegister(userAgeHistogram)
 
 	logger.Info("Prometheus metrics initialized")
 

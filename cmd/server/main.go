@@ -19,6 +19,7 @@ import (
 	"go-grafana/pkg/metrics"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/fx"
@@ -59,6 +60,7 @@ func main() {
 			config.NewConfig,
 			newLogger,
 			database.NewPostgresDB,
+			func() prometheus.Registerer { return prometheus.DefaultRegisterer },
 			metrics.NewPrometheusMetrics,
 			repository.NewUserRepository,
 			repository.NewAPIKeyRepository,
