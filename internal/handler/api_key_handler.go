@@ -78,7 +78,9 @@ func (h *APIKeyHandler) CreateAPIKey(c *gin.Context) {
 // @Description Retrieve a list of all API keys (keys are masked for security)
 // @Tags api-keys
 // @Produce json
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Success 200 {array} models.APIKeyResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api-keys [get]
 func (h *APIKeyHandler) GetAPIKeys(c *gin.Context) {
@@ -102,8 +104,10 @@ func (h *APIKeyHandler) GetAPIKeys(c *gin.Context) {
 // @Tags api-keys
 // @Produce json
 // @Param id path int true "API Key ID"
+// @Param X-API-Key header string true "API Key" default(sk-1234567890abcdef)
 // @Success 200 {object} models.APIKeyResponse
 // @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api-keys/{id} [get]
