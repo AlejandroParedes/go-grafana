@@ -151,4 +151,5 @@ secrets.yml
 
 # Build artifacts
 build/
-dist/ 
+dist/
+bin/
