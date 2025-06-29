@@ -17,7 +17,9 @@ import (
 	"go-grafana/internal/service"
 	"go-grafana/pkg/database"
 	"go-grafana/pkg/metrics"
+	"go-grafana/pkg/sentry"
 
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	swaggerFiles "github.com/swaggo/files"
@@ -25,6 +27,10 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
+	"github.com/TheZeroSlave/zapsentry"
+	sentrysdk "github.com/getsentry/sentry-go"
 )
 
 // @title Go Grafana Web API
@@ -76,6 +82,7 @@ func main() {
 		),
 		// Invoke the server startup
 		fx.Invoke(startServer),
+		fx.Invoke(sentry.InitSentry),
 		// Configure logging
 		fx.WithLogger(func() fxevent.Logger {
 			return fxevent.NopLogger
@@ -91,23 +98,42 @@ func newLogger(cfg *config.Config) *zap.Logger {
 	var logger *zap.Logger
 	var err error
 
+	// Default Zap logger configuration
+	zapConfig := zap.NewProductionConfig()
+
+	// Set log level
 	switch cfg.Logging.Level {
 	case "debug":
-		logger, err = zap.NewDevelopment()
+		zapConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 	case "info":
-		logger, err = zap.NewProduction()
+		zapConfig.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 	case "warn":
-		logger, err = zap.NewProduction()
-		logger = logger.WithOptions(zap.IncreaseLevel(zap.WarnLevel))
+		zapConfig.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
 	case "error":
-		logger, err = zap.NewProduction()
-		logger = logger.WithOptions(zap.IncreaseLevel(zap.ErrorLevel))
+		zapConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
 	default:
-		logger, err = zap.NewProduction()
+		zapConfig.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 	}
 
+	// Build the logger
+	logger, err = zapConfig.Build()
 	if err != nil {
 		log.Fatal("Failed to create logger:", err)
+	}
+
+	// Add Sentry core if DSN is configured
+	if cfg.Sentry.DSN != "" {
+		sentryCfg := zapsentry.Configuration{
+			Level:             zapcore.ErrorLevel, //when to send message to sentry
+			EnableBreadcrumbs: true,               // enable sending breadcrumbs to Sentry
+			BreadcrumbLevel:   zapcore.InfoLevel,  // at what level should we sent breadcrumbs to sentry
+		}
+		sentryCore, err := zapsentry.NewCore(sentryCfg, zapsentry.NewSentryClientFromClient(sentrysdk.CurrentHub().Client()))
+		if err != nil {
+			logger.Error("Failed to create Sentry core for Zap", zap.Error(err))
+		} else {
+			logger = zapsentry.AttachCoreToLogger(sentryCore, logger)
+		}
 	}
 
 	return logger
@@ -133,7 +159,9 @@ func newGinEngine(
 	engine.Use(loggingMiddleware.Handle())
 	engine.Use(metricsMiddleware.Handle())
 	engine.Use(corsMiddleware.Handle())
-	engine.Use(gin.Recovery())
+	engine.Use(sentrygin.New(sentrygin.Options{
+		Repanic: true,
+	}))
 
 	// Create API key authentication middleware
 	apiKeyAuthMiddleware := middleware.APIKeyAuthMiddleware(apiKeyService, logger)
@@ -152,6 +180,9 @@ func newGinEngine(
 
 		// Metrics endpoint for Prometheus
 		api.GET("/metrics", metricsMiddleware.MetricsHandler())
+		api.GET("/foo", func(ctx *gin.Context) {
+			panic("test")
+		})
 
 		// User routes
 		users := api.Group("/users")

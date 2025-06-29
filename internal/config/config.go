@@ -13,6 +13,7 @@ type Config struct {
 	Server   ServerConfig   `json:"server"`
 	Database DatabaseConfig `json:"database"`
 	Logging  LoggingConfig  `json:"logging"`
+	Sentry   SentryConfig   `json:"sentry"`
 }
 
 // ServerConfig holds server-specific configuration
@@ -38,6 +39,11 @@ type LoggingConfig struct {
 	Level string `json:"level"`
 }
 
+// SentryConfig holds Sentry-specific configuration
+type SentryConfig struct {
+	DSN string `json:"dsn"`
+}
+
 // NewConfig creates a new configuration instance with environment-based values
 func NewConfig() *Config {
 	return &Config{
@@ -57,6 +63,9 @@ func NewConfig() *Config {
 		},
 		Logging: LoggingConfig{
 			Level: getEnv("LOG_LEVEL", "info"),
+		},
+		Sentry: SentryConfig{
+			DSN: getEnv("SENTRY_DSN", ""),
 		},
 	}
 }
@@ -107,5 +116,6 @@ func (c *Config) LogConfig(logger *zap.Logger) {
 		zap.String("db_port", c.Database.Port),
 		zap.String("db_name", c.Database.DBName),
 		zap.String("log_level", c.Logging.Level),
+		zap.String("sentry_dsn", c.Sentry.DSN),
 	)
 }

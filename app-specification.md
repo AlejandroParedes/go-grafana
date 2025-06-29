@@ -34,3 +34,11 @@ Update the app to implement control on the endpoints
 - Make swagger UI let users put on demo the X-API-Key HEADER
 - Update readme
 - Update app-plan
+
+# Updates 28 Jun 2025
+Implement sentry error monitor
+## Features
+- Implement sentry to report uncaught errors
+- Send logs
+- Implement to send to a self hosted sentry container
+- Use 10% of use rate
